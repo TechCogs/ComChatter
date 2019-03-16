@@ -9,6 +9,7 @@
 
 import std.stdio;
 import std.string;
+import std.concurrency;
 import std.conv;
 import std.socket;
 
@@ -52,6 +53,8 @@ void main() {
     sock.send(userNickData);
     sock.send(userUserData);
 
+    spawn(&getInput);
+
     while(true) {
       char[] input;
       char[1] buf;
@@ -74,5 +77,16 @@ void main() {
   }
   scope (exit) {
     sock.close();
+  }
+}
+
+void getInput() {
+  while (true) {
+    write(">");
+    string s = strip(readln());
+    writeln(s);
+    if (s == "quit") {
+      break;
+    }
   }
 }
