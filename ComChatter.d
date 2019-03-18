@@ -12,6 +12,7 @@ import std.string;
 import std.concurrency;
 import std.conv;
 import std.socket;
+import core.thread;
 
 enum DEFAULT_USER = "ThingyUser";
 enum DEFAULT_PORT = "6667";
@@ -28,6 +29,8 @@ void main() {
   string user;
   string server;
   string port;
+
+  bool connected = false;
 
   writef("User name [%s]>", DEFAULT_USER);
   user = strip(readln());
@@ -52,15 +55,30 @@ void main() {
 
     sock.send(userNickData);
     sock.send(userUserData);
+    sock.blocking = false;
 
-    spawn(&getInput);
+    bool program = true;
 
-    while(true) {
+    auto inputWorker = spawn(&getInput);
+
+    while(program) {
       char[] input;
       char[1] buf;
 
       while(buf[0] != '\n') {
-        sock.receive(buf);
+        long c = sock.receive(buf);
+        if (c == -1) {
+          receiveTimeout(50.msecs,
+            (string s) {
+              s = strip(s);
+              if (s == "!quit") {
+                sock.send("QUIT\r\n");
+                program = false;
+              }
+            });
+          Thread.sleep(2.seconds);
+          continue;
+        }
         input ~= buf;
       }
 
@@ -77,15 +95,17 @@ void main() {
   }
   scope (exit) {
     sock.close();
+    thread_joinAll();
   }
+
 }
 
 void getInput() {
   while (true) {
     write(">");
     string s = strip(readln());
-    writeln(s);
-    if (s == "quit") {
+    ownerTid.send(s ~ "\r\n");
+    if (s == "!quit") {
       break;
     }
   }
