@@ -29,6 +29,7 @@ void main() {
   string user;
   string server;
   string port;
+  string channel;
 
   bool connected = false;
 
@@ -75,6 +76,10 @@ void main() {
                 sock.send("QUIT\r\n");
                 program = false;
               }
+              else parseCommands(s, sock, channel);
+              /*else {
+                sock.send(s ~ "\r\n");
+              }*/
             });
           Thread.sleep(2.seconds);
           continue;
@@ -86,7 +91,7 @@ void main() {
         sock.send("PONG\r\n");
       }
 
-      write(input);
+      writeln(formatText(input));
 
     }
   }
@@ -100,6 +105,17 @@ void main() {
 
 }
 
+string formatText(in char[] text) {
+  string words = strip(to!string(text));
+  string[] s = words.split(":");
+  if (s.length > 2) {
+    return s[2];
+  }
+  else {
+    return s[1];
+  }
+}
+
 void getInput() {
   while (true) {
     write(">");
@@ -108,5 +124,23 @@ void getInput() {
     if (s == "!quit") {
       break;
     }
+  }
+}
+
+void parseCommands(string command, ref Socket sock, ref string channel) {
+  if (command.startsWith("/join")) {
+    command = command.strip("/join ");
+    if (channel != "") {
+      sock.send("PART " ~ channel ~ "\r\n");
+    }
+    channel = command;
+    sock.send("JOIN " ~ command ~ "\r\n");
+  }
+  if (command.startsWith("/raw")) {
+    command = command.strip("/raw ");
+    sock.send(command ~ "\r\n");
+  }
+  else {
+    sock.send("PRIVMSG " ~ channel ~ " :" ~ command ~ "\r\n");
   }
 }
