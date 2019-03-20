@@ -71,12 +71,12 @@ void main() {
         if (c == -1) {
           receiveTimeout(50.msecs,
             (string s) {
-              s = strip(s);
-              if (s == "!quit") {
+              //s = strip(s);
+              /*if (s == "!quit") {
                 sock.send("QUIT\r\n");
                 program = false;
-              }
-              else parseCommands(s, sock, channel);
+              }*/
+              program = parseCommands(s, sock, channel);
               /*else {
                 sock.send(s ~ "\r\n");
               }*/
@@ -120,14 +120,15 @@ void getInput() {
   while (true) {
     write(">");
     string s = strip(readln());
-    ownerTid.send(s ~ "\r\n");
-    if (s == "!quit") {
+    //ownerTid.send(s ~ "\r\n");
+    ownerTid.send(s);
+    if (s == "/quit") {
       break;
     }
   }
 }
 
-void parseCommands(string command, ref Socket sock, ref string channel) {
+bool parseCommands(string command, ref Socket sock, ref string channel) {
   if (command.startsWith("/join")) {
     command = command.strip("/join ");
     if (channel != "") {
@@ -136,11 +137,19 @@ void parseCommands(string command, ref Socket sock, ref string channel) {
     channel = command;
     sock.send("JOIN " ~ command ~ "\r\n");
   }
-  if (command.startsWith("/raw")) {
+  else if (command.startsWith("/names")) {
+    sock.send("NAMES " ~ channel ~ "\r\n");
+  }
+  else if (command.startsWith("/raw")) {
     command = command.strip("/raw ");
     sock.send(command ~ "\r\n");
+  }
+  else if (command.startsWith("/quit")) {
+    sock.send("QUIT\r\n");
+    return false;
   }
   else {
     sock.send("PRIVMSG " ~ channel ~ " :" ~ command ~ "\r\n");
   }
+  return true;
 }
